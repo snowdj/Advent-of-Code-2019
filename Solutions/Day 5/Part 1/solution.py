@@ -1,67 +1,69 @@
 #!usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-def parse_instructions(sequence):
+"""Intcode computer."""
+
+from modes import modes
+from opcodes import opcodes
+
+
+def digest_input():
+    """Read a text file into a list."""
+    with open('input.txt') as f:
+        for count, line in enumerate(f):
+            return [int(i) for i in line.split(',')]
+
+
+def read(memory, index, offset, mode):
+    """Read an item from memory."""
+    item = memory[index + offset]
+
+    if mode == modes.POSITION:
+        item = memory[item]
+    return item
+
+
+def write(memory, index, offset, value):
+    """Write an item to memory."""
+    memory[memory[index + offset]] = value
+
+
+def run(memory):
     """Process an intcode instruction."""
     i = 0
-    while i < len(sequence):
-        # Pad opcode.
-        padded_string = str(sequence[i]).zfill(5)
-        opcode = padded_string[-2:]
-        p_mode1 = padded_string[2]
-        p_mode2 = padded_string[1]
-        p_mode3 = padded_string[0]
+    while i < len(memory):
+        # Get opcode and parameter modes.
+        opcode = memory[i] % 100
+        p_mode1 = memory[i] // 100 % 10
+        p_mode2 = memory[i] // 1000 % 10
+        p_mode3 = memory[i] // 10000
 
-        if opcode == '01':
-            # Assume that we are in immediate mode and grab the value of the
-            # first parameter.
-            param1 = sequence[i + 1]
-
-            # If we are in position mode, grab the the value of the index 
-            # that the parameter requests.
-            if p_mode1 == '0':
-                param1 = sequence[param1]
-
-            param2 = sequence[i + 2]
-            if p_mode2 == '0':
-                param2 = sequence[param2]
-
-            param3 = sequence[i + 3]
-            if p_mode3 == '0':
-                sequence[param3] = param1 + param2
-
+        if opcode == opcodes.ADD:
+            param1 = read(memory, i, 1, p_mode1)
+            param2 = read(memory, i, 2, p_mode2)
+            param3 = read(memory, i, 3, p_mode3)
+            write(memory, i, 3, param1 + param2)
             i += 4
-        elif opcode == '02':
-            param1 = sequence[i + 1]
-
-            if p_mode1 == '0':
-                param1 = sequence[param1]
-
-            param2 = sequence[i + 2]
-            if p_mode2 == '0':
-                param2 = sequence[param2]
-
-            param3 = sequence[i + 3]
-            if p_mode3 == '0':
-                sequence[param3] = param1 * param2
-
+        elif opcode == opcodes.MULTIPLY:
+            param1 = read(memory, i, 1, p_mode1)
+            param2 = read(memory, i, 2, p_mode2)
+            param3 = read(memory, i, 3, p_mode3)
+            write(memory, i, 3, param1 * param2)
             i += 4
-        elif opcode == '03':
+        elif opcode == opcodes.GET:
             user_input = int(input('>: '))
-            param1 = sequence[i + 1]
-            sequence[param1] = user_input
+            write(memory, i, 1, user_input)
             i += 2
-        elif opcode == '04':
-            param1 = sequence[i + 1]
-            if p_mode1 == '0':
-                param1 = sequence[param1]
-            print(param1)
+        elif opcode == opcodes.PRINT:
+            print(read(memory, i, 1, p_mode1))
             i += 2
-        elif opcode == '99':
+        elif opcode ==opcodes.ABORT:
             return
         else:
             print(f'Unrecognized opcode: {opcode}.')
 
 
-sequence = [3,225,1,225,6,6,1100,1,238,225,104,0,1102,89,49,225,1102,35,88,224,101,-3080,224,224,4,224,102,8,223,223,1001,224,3,224,1,223,224,223,1101,25,33,224,1001,224,-58,224,4,224,102,8,223,223,101,5,224,224,1,223,224,223,1102,78,23,225,1,165,169,224,101,-80,224,224,4,224,102,8,223,223,101,7,224,224,1,224,223,223,101,55,173,224,1001,224,-65,224,4,224,1002,223,8,223,1001,224,1,224,1,223,224,223,2,161,14,224,101,-3528,224,224,4,224,1002,223,8,223,1001,224,7,224,1,224,223,223,1002,61,54,224,1001,224,-4212,224,4,224,102,8,223,223,1001,224,1,224,1,223,224,223,1101,14,71,225,1101,85,17,225,1102,72,50,225,1102,9,69,225,1102,71,53,225,1101,10,27,225,1001,158,34,224,101,-51,224,224,4,224,102,8,223,223,101,6,224,224,1,223,224,223,102,9,154,224,101,-639,224,224,4,224,102,8,223,223,101,2,224,224,1,224,223,223,4,223,99,0,0,0,677,0,0,0,0,0,0,0,0,0,0,0,1105,0,99999,1105,227,247,1105,1,99999,1005,227,99999,1005,0,256,1105,1,99999,1106,227,99999,1106,0,265,1105,1,99999,1006,0,99999,1006,227,274,1105,1,99999,1105,1,280,1105,1,99999,1,225,225,225,1101,294,0,0,105,1,0,1105,1,99999,1106,0,300,1105,1,99999,1,225,225,225,1101,314,0,0,106,0,0,1105,1,99999,108,226,226,224,102,2,223,223,1006,224,329,101,1,223,223,1007,677,677,224,1002,223,2,223,1005,224,344,1001,223,1,223,8,226,677,224,1002,223,2,223,1006,224,359,1001,223,1,223,108,226,677,224,1002,223,2,223,1005,224,374,1001,223,1,223,107,226,677,224,102,2,223,223,1006,224,389,101,1,223,223,1107,226,226,224,1002,223,2,223,1005,224,404,1001,223,1,223,1107,677,226,224,102,2,223,223,1005,224,419,101,1,223,223,1007,226,226,224,102,2,223,223,1006,224,434,1001,223,1,223,1108,677,226,224,1002,223,2,223,1005,224,449,101,1,223,223,1008,226,226,224,102,2,223,223,1005,224,464,101,1,223,223,7,226,677,224,102,2,223,223,1006,224,479,101,1,223,223,1008,226,677,224,1002,223,2,223,1006,224,494,101,1,223,223,1107,226,677,224,1002,223,2,223,1005,224,509,1001,223,1,223,1108,226,226,224,1002,223,2,223,1006,224,524,101,1,223,223,7,226,226,224,102,2,223,223,1006,224,539,1001,223,1,223,107,226,226,224,102,2,223,223,1006,224,554,101,1,223,223,107,677,677,224,102,2,223,223,1006,224,569,101,1,223,223,1008,677,677,224,1002,223,2,223,1006,224,584,1001,223,1,223,8,677,226,224,1002,223,2,223,1005,224,599,101,1,223,223,1108,226,677,224,1002,223,2,223,1005,224,614,101,1,223,223,108,677,677,224,102,2,223,223,1005,224,629,1001,223,1,223,8,677,677,224,1002,223,2,223,1005,224,644,1001,223,1,223,7,677,226,224,102,2,223,223,1006,224,659,1001,223,1,223,1007,226,677,224,102,2,223,223,1005,224,674,101,1,223,223,4,223,99,226]
-parse_instructions(sequence)
+if __name__ == '__main__':
+    """Main."""
+    memory = digest_input()
+    run(memory)
